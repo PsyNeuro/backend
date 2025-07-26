@@ -2,12 +2,42 @@
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
-require("dotenv").config();
 const bcryptjs = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+require("dotenv").config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+const secret = process.env.JWT_SECRET || "thisshouldbeasecret"; // env variable
+function verifyAuthToken(req, res, next) {
+  // Get token from Authorization header (Bearer token) or cookies
+  const authHeader = req.headers.authorization;
+  const token =
+    authHeader && authHeader.startsWith("Bearer ")
+      ? authHeader.substring(7)
+      : req.cookies?.authToken;
+
+  if (!token) {
+    return res.status(401).json({
+      message: "No token provided. Authentication failed!",
+    });
+  }
+
+  // verify the token
+  jwt.verify(token, secret, function (err, decoded) {
+    if (err) {
+      return res.status(401).json({
+        message: "Invalid token. Authentication failed! Please try again :(",
+      });
+    }
+
+    // save to request object for later use
+    req.userId = decoded.id;
+    next();
+  });
+}
 
 const PORT = process.env.PORT || 5000;
 
@@ -49,6 +79,25 @@ app.post("/api/register", async (req, res) => {
     }
 
     console.log("Extracted data:", { name, email, password: "***", role });
+
+    // Check if email exists
+    console.log("Checking if email has been used:", email);
+
+    const check_user = await User.findOne({ email: email });
+
+    if (check_user) {
+      console.log("Email already exists for user:", {
+        name: check_user.name,
+        email: check_user.email,
+        role: check_user.role,
+      });
+      return res.status(409).json({
+        error:
+          "Email address is already associated with an account, can't register.",
+      });
+    }
+
+    console.log("Email is available for registration");
 
     // Hash the password before saving
     const hashedPassword = await bcryptjs.hash(password, 10);
@@ -121,15 +170,25 @@ app.post("/api/login", async (req, res) => {
       });
     }
 
-    // Login successful
-    res.json({
-      message: "Login successful!",
+    // Create JWT token
+    const token = jwt.sign({ id: user._id }, secret, {
+      expiresIn: 86400, // expires in 24 hours
+    });
+
+    // Login successful - return user info AND token
+    res.status(200).json({
+      message: "Successfully logged-in!",
+      token: token,
       user: { name: user.name, email: user.email, role: user.role },
     });
   } catch (error) {
     console.error("Login error:", error);
     res.status(500).json({ error: error.message });
   }
+});
+
+app.get("/api/protected", verifyAuthToken, (req, res) => {
+  res.status(200).send("You are in!");
 });
 
 app.listen(PORT, () => {
