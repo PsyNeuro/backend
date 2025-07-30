@@ -1,8 +1,9 @@
 const express = require("express");
-const app = express();
 const router = express.Router();
+const User = require("../models/User");
+const bcryptjs = require("bcryptjs");
 
-app.post("/", async (req, res) => {
+router.post("/", async (req, res) => {
   try {
     // Gets user data from frontend
     console.log("Register Endpoint Reached");

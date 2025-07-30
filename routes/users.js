@@ -1,8 +1,8 @@
 const express = require("express");
-const app = express();
 const router = express.Router();
+const User = require("../models/User");
 
-app.get("/", async (req, res) => {
+router.get("/", async (req, res) => {
   try {
     console.log("GET /api/users endpoint reached");
     const users = await User.find({}, "name email role"); // Don't return passwords
