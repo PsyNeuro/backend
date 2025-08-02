@@ -1,10 +1,15 @@
 const express = require("express");
 const router = express.Router();
 const User = require("../models/User");
-const bcryptjs = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const RedisAdapter = require("../models/RedisAdapter");
+const MongoDBAdaptor = require("../models/MongoDBAdaptor");
+const { CookieTTL, RedisTTL } = require("./Globals");
+const { mongo } = require("mongoose");
 
 const secret = process.env.JWT_SECRET || "thisshouldbeasecret"; // env variable
+const redisCache = new RedisAdapter();
+const mongoDBAdaptor = new MongoDBAdaptor();
 
 router.post("/", async (req, res) => {
   try {
@@ -22,34 +27,50 @@ router.post("/", async (req, res) => {
 
     console.log("Extracted data:", { email, password: "***" });
 
-    // Find user by email
-    const user = await User.findOne({ email: email });
+    mongo_user = await mongoDBAdaptor.login(email, password);
 
-    if (!user) {
+    if (mongo_user.error) {
+      console.log("Login error:", mongo_user.error);
       return res.status(401).json({
-        error: "User not found with this email address.",
+        error: mongo_user.error,
       });
     }
 
-    console.log("Found user:", {
-      name: user.name,
-      email: user.email,
-      role: user.role,
-    });
+    // Cache user session in Redis (example: cache by user email)
+    await redisCache.set(
+      `session:${mongo_user.email}`,
+      {
+        userId: mongo_user._id,
+        name: mongo_user.name,
+        email: mongo_user.email,
+        role: mongo_user.role,
+      },
+      RedisTTL
+    );
+    console.log("Cached user session in Redis for:", mongo_user.email);
 
-    // Compare password with hashed password
-    const isPasswordValid = await bcryptjs.compare(password, user.password);
-
-    if (!isPasswordValid) {
-      return res.status(401).json({
-        error: "Invalid password.",
+    // Set session ID in cookie
+    try {
+      res.cookie("session_id", email, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "Strict",
       });
+      // Log success or failure
+      if (!req.cookies || !req.cookies.session_id) {
+        console.error("Failed to set session_id cookie.");
+      } else {
+        console.log(
+          "session_id cookie set successfully:",
+          req.cookies.session_id
+        );
+      }
+    } catch (err) {
+      console.error("Error setting session_id cookie:", err);
     }
-
-    // req.session.UserId = user._id;
 
     // Create JWT token
-    const token = jwt.sign({ id: user._id }, secret, {
+    const token = jwt.sign({ id: mongo_user._id }, secret, {
       expiresIn: "1h", // expires in 1 hour
     });
 
@@ -58,14 +79,19 @@ router.post("/", async (req, res) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production", // Only send over HTTPS in production
       sameSite: "Lax", // Adjust as needed: 'Strict' or 'None' (with secure:true)
-      maxAge: 3600000, // 1 hour in milliseconds (matches JWT expiration)
+      maxAge: CookieTTL, // 1 hour in milliseconds (matches JWT expiration)
     });
 
     // Login successful - return user info AND token
     res.status(200).json({
       message: "Successfully logged-in!",
       token: token,
-      user: { name: user.name, email: user.email, role: user.role },
+      user: {
+        name: mongo_user.name,
+        email: mongo_user.email,
+        role: mongo_user.role,
+        _id: mongo_user._id,
+      },
     });
   } catch (error) {
     console.error("Login error:", error);

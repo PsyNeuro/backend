@@ -2,16 +2,21 @@ const express = require("express");
 const router = express.Router();
 const User = require("../models/User");
 
-const verifyAuthToken = require("../functions/verifyAuthToken");
-
-router.get("/", verifyAuthToken, async (req, res) => {
+router.get("/", async (req, res) => {
   try {
     console.log("GET /api/me endpoint reached");
-    console.log("User ID from token:", req.userId);
+    sessionID = req.cookies.session_id; // Get session ID from cookie
+
+    if (!sessionID) {
+      return res.status(401).json({
+        error: "No active session found. Please log in.",
+      });
+    }
+    console.log("User ID from token:", sessionID);
 
     // Find user by mongodb ID which is taken from the JWT token
-    //
-    const user = await User.findById(req.userId).select("-password"); // Exclude password from response
+
+    const user = await User.findOne({ email: sessionID }).select("-password"); // Exclude password from response
 
     if (!user) {
       return res.status(404).json({

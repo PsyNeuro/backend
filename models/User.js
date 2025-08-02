@@ -7,4 +7,12 @@ const UserSchema = new mongoose.Schema({
   role: String,
 });
 
+UserSchema.methods.toJSON = function () {
+  return {
+    name: this.name,
+    email: this.email,
+    role: this.role,
+  };
+};
+
 module.exports = mongoose.model("User", UserSchema);
