@@ -37,6 +37,7 @@ client
       app.use("/api/register", require("./routes/register.js"));
       app.use("/api/user", require("./routes/users.js"));
       app.use("/api/login", require("./routes/login.js"));
+      app.use("/api/logout", require("./routes/logout.js"));
       app.use("/api/me", require("./routes/me.js"));
       app.use("/api/protected", require("./routes/protected.js"));
 

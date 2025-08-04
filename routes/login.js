@@ -1,11 +1,9 @@
 const express = require("express");
 const router = express.Router();
-const User = require("../models/User");
 const jwt = require("jsonwebtoken");
 const RedisAdapter = require("../models/RedisAdapter");
 const MongoDBAdaptor = require("../models/MongoDBAdaptor");
 const { CookieTTL, RedisTTL } = require("./Globals");
-const { mongo } = require("mongoose");
 
 const secret = process.env.JWT_SECRET || "thisshouldbeasecret"; // env variable
 const redisCache = new RedisAdapter();
@@ -53,12 +51,14 @@ router.post("/", async (req, res) => {
     try {
       res.cookie("session_id", email, {
         httpOnly: true,
-        secure: true,
+        secure: false,
         sameSite: "Strict",
       });
       // Log success or failure
-      if (!req.cookies || !req.cookies.session_id) {
-        console.error("Failed to set session_id cookie.");
+      if (!req.cookies) {
+        console.error("req.cookies is undefined or missing.");
+      } else if (!req.cookies.session_id) {
+        console.error("req.cookies exists, but session_id is missing.");
       } else {
         console.log(
           "session_id cookie set successfully:",
@@ -69,23 +69,23 @@ router.post("/", async (req, res) => {
       console.error("Error setting session_id cookie:", err);
     }
 
-    // Create JWT token
-    const token = jwt.sign({ id: mongo_user._id }, secret, {
-      expiresIn: "1h", // expires in 1 hour
-    });
+    // // Create JWT token
+    // const token = jwt.sign({ id: mongo_user._id }, secret, {
+    //   expiresIn: "1h", // expires in 1 hour
+    // });
 
-    // Set JWT as http-only cookie, which makes cookie inaccesible to client side javascript
-    res.cookie("jwt", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production", // Only send over HTTPS in production
-      sameSite: "Lax", // Adjust as needed: 'Strict' or 'None' (with secure:true)
-      maxAge: CookieTTL, // 1 hour in milliseconds (matches JWT expiration)
-    });
+    // // Set JWT as http-only cookie, which makes cookie inaccesible to client side javascript
+    // res.cookie("jwt", token, {
+    //   httpOnly: true,
+    //   secure: process.env.NODE_ENV === "production", // Only send over HTTPS in production
+    //   sameSite: "Lax", // Adjust as needed: 'Strict' or 'None' (with secure:true)
+    //   maxAge: CookieTTL, // 1 hour in milliseconds (matches JWT expiration)
+    // });
 
     // Login successful - return user info AND token
     res.status(200).json({
       message: "Successfully logged-in!",
-      token: token,
+      session_id: req.cookies.session_id,
       user: {
         name: mongo_user.name,
         email: mongo_user.email,

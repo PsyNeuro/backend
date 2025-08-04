@@ -14,8 +14,7 @@ router.get("/", async (req, res) => {
     }
     console.log("User ID from token:", sessionID);
 
-    // Find user by mongodb ID which is taken from the JWT token
-
+    // Find user by mongodb ID which is taken from the session cookie
     const user = await User.findOne({ email: sessionID }).select("-password"); // Exclude password from response
 
     if (!user) {
