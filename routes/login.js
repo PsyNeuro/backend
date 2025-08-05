@@ -69,19 +69,6 @@ router.post("/", async (req, res) => {
       console.error("Error setting session_id cookie:", err);
     }
 
-    // // Create JWT token
-    // const token = jwt.sign({ id: mongo_user._id }, secret, {
-    //   expiresIn: "1h", // expires in 1 hour
-    // });
-
-    // // Set JWT as http-only cookie, which makes cookie inaccesible to client side javascript
-    // res.cookie("jwt", token, {
-    //   httpOnly: true,
-    //   secure: process.env.NODE_ENV === "production", // Only send over HTTPS in production
-    //   sameSite: "Lax", // Adjust as needed: 'Strict' or 'None' (with secure:true)
-    //   maxAge: CookieTTL, // 1 hour in milliseconds (matches JWT expiration)
-    // });
-
     // Login successful - return user info AND token
     res.status(200).json({
       message: "Successfully logged-in!",

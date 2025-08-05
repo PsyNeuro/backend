@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const User = require("./User");
+const Lecture = require("./Lecture");
 const bcryptjs = require("bcryptjs");
 
 class MongoDBAdaptor {
@@ -78,6 +79,43 @@ class MongoDBAdaptor {
       };
     } catch (error) {
       console.error("Registration error:", error);
+      return { error: error.message };
+    }
+  }
+
+  async addLecture(title, description, url, duration, teacher) {
+    try {
+      // Validate required fields
+      if (!title || !description || !url || !duration || !teacher) {
+        return {
+          error:
+            "Missing required fields. Title, description, url, duration, and teacher name are required.",
+        };
+      }
+
+      console.log("Extracted data:", {
+        title,
+        description,
+        url,
+        duration,
+        teacher,
+      });
+
+      const lecture = new Lecture({
+        title,
+        description,
+        url,
+        duration,
+        teacher,
+      });
+      await lecture.save();
+
+      return {
+        message: "Lecture added successfully",
+        lecture: { title, description, url, duration, teacher },
+      };
+    } catch (error) {
+      console.error("Add Lecture error:", error);
       return { error: error.message };
     }
   }

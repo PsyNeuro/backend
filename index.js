@@ -40,6 +40,8 @@ client
       app.use("/api/logout", require("./routes/logout.js"));
       app.use("/api/me", require("./routes/me.js"));
       app.use("/api/protected", require("./routes/protected.js"));
+      app.use("/api/isteacher", require("./routes/isteacher.js"));
+      app.use("/api/lectureset", require("./routes/addlecture.js"));
 
       // Start server AFTER everything is ready
       const PORT = process.env.PORT || 5000;
